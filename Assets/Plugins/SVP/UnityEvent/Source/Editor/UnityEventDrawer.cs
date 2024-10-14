@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Pool;
 using UnityEngine.UIElements;
 
 namespace SVP.Editor.Events
@@ -12,6 +14,9 @@ namespace SVP.Editor.Events
     [CustomPropertyDrawer(typeof(UnityEventBase), true)]
     public class UnityEventDrawer : UnityEditorInternal.UnityEventDrawer
     {
+        private const string INVOKE_METHOD = "Invoke";
+        private const string EMPTY_OPTION_TEXT = "No Function";
+
         #region Visual Element
 
         // Class Names
@@ -218,7 +223,74 @@ namespace SVP.Editor.Events
 
         internal static GenericMenu BuildPopupList(UnityEngine.Object target, UnityEventBase dummyEvent, SerializedProperty listenerProperty)
         {
-            return new GenericMenu();
+            if (target is Component)
+            {
+                target = (target as Component).gameObject;
+            }
+
+            GenericMenu menu = new GenericMenu();
+
+            // We add the empty option
+            SerializedProperty methodName = listenerProperty.GetMethodNameProperty();
+            bool unassignedMethod = string.IsNullOrEmpty(methodName.stringValue);
+
+            menu.AddItem(new GUIContent(EMPTY_OPTION_TEXT), unassignedMethod, ClearEventFunction, CreateEmptyUnityEventFunction(listenerProperty));
+
+            if (target == null)
+            {
+                return menu;
+            }
+
+            menu.AddSeparator("");
+
+            Type eventType = dummyEvent.GetType();
+            System.Reflection.MethodInfo invokeMethod = eventType.GetMethod(INVOKE_METHOD);
+
+            List<Type> delegateArgumentsTypes = new List<Type>();
+            foreach (System.Reflection.ParameterInfo paramInfo in invokeMethod.GetParameters())
+            {
+                delegateArgumentsTypes.Add(paramInfo.ParameterType);
+            }
+
+            GeneratePopUpForType(menu, target, target.GetType().Name, listenerProperty, delegateArgumentsTypes);
+
+            // Might a scriptable object and those don't have components so we can return here
+            if (target is not GameObject)
+            {
+                return menu;
+            }
+
+            Dictionary<string, int> typeCount = CollectionPool<Dictionary<string, int>, KeyValuePair<string, int>>.Get();
+
+            Component[] components = (target as GameObject).GetComponents<Component>();
+
+            foreach (Component component in components)
+            {
+                if (component == null)
+                {
+                    continue;
+                }
+
+                Type componentType = component.GetType();
+                string targetName = componentType.Name;
+                int count = 0;
+                if (!typeCount.TryGetValue(targetName, out count))
+                {
+                    targetName = $"{targetName} ({count})";
+                }
+
+                GeneratePopUpForType(menu, component, targetName, listenerProperty, delegateArgumentsTypes);
+
+                typeCount[componentType.Name] = count + 1;
+            }
+
+            CollectionPool<Dictionary<string, int>, KeyValuePair<string, int>>.Release(typeCount);
+            return menu;
+        }
+
+        internal static void GeneratePopUpForType(GenericMenu menu, UnityEngine.Object target, string targetName, SerializedProperty listener, List<Type> delegateArgumentsTypes)
+        {
+
         }
 
         #endregion Popup List

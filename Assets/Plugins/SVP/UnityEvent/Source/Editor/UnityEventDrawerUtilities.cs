@@ -9,6 +9,12 @@ namespace SVP.Editor.Events
 
     public static class UnityEventDrawerUtilities
     {
+        #region Reflection Type Names
+
+        private const string EMPTY_UNITY_EVENT_FUNCTION_STRUCT = "UnityEventFunction";
+
+        #endregion
+
         #region Reflection Method Names
 
         public const string CREATE_LIST_VIEW_METHOD = "CreateListView";
@@ -18,6 +24,7 @@ namespace SVP.Editor.Events
         public const string GET_ARGUMENT_METHOD = "GetArgument";
         public const string GET_ROW_RECTS_METHOD = "GetRowRects";
         public const string GET_MODE_METHOD = "GetMode";
+        public const string CLEAR_EVENT_FUNCTION_METHOD = "ClearEventFunction";
 
         #endregion Reflection Method Names
 
@@ -86,6 +93,20 @@ namespace SVP.Editor.Events
         {
             System.Type eventDrawerType = typeof(UnityEditorInternal.UnityEventDrawer);
             return eventDrawerType.InvokeStaticPrivateMethod<PersistentListenerMode>(GET_MODE_METHOD, new object[] { modeProperty });
+        }
+
+        public static void ClearEventFunction(object source)
+        {
+            System.Type eventDrawerType = typeof(UnityEditorInternal.UnityEventDrawer);
+            eventDrawerType.InvokeStaticPrivateMethod(CLEAR_EVENT_FUNCTION_METHOD, new object[] { source });
+        }
+
+        public static object CreateEmptyUnityEventFunction(SerializedProperty listener)
+        {
+            System.Type eventDrawerType = typeof(UnityEditorInternal.UnityEventDrawer);
+            System.Type emptyUnityEventFunctionType = eventDrawerType.GetPrivateNestedType(EMPTY_UNITY_EVENT_FUNCTION_STRUCT);
+            object emptyUnityEventFunction = System.Activator.CreateInstance(emptyUnityEventFunctionType, listener, null, null, PersistentListenerMode.EventDefined);
+            return emptyUnityEventFunction;
         }
     }
 }
