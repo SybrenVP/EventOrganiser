@@ -1,6 +1,5 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -11,6 +10,29 @@ namespace SVP.Reflection
         private const BindingFlags INSTANCE_PRIVATE_FLAGS = BindingFlags.NonPublic | BindingFlags.Instance;
         private const BindingFlags INSTANCE_PUBLIC_FLAGS = BindingFlags.Public | BindingFlags.Instance;
         private const BindingFlags STATIC_PRIVATE_FLAGS = BindingFlags.NonPublic | BindingFlags.Static;
+
+        #region Types
+
+        public static Type ByName(string name)
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies().Reverse())
+            {
+                var tt = assembly.GetType(name);
+                if (tt != null)
+                {
+                    return tt;
+                }
+            }
+
+            return null;
+        }
+
+        public static Type GetPrivateNestedType(this Type type, string name)
+        {
+            return type.GetNestedType(name, BindingFlags.NonPublic);
+        }
+
+        #endregion Types
 
         #region Methods
 
@@ -90,7 +112,7 @@ namespace SVP.Reflection
             field.SetValue(target, value);
         }
 
-        private static FieldInfo GetPrivateField(this Type type, string name)
+        public static FieldInfo GetPrivateField(this Type type, string name)
         {
             return GetField(type, name, INSTANCE_PRIVATE_FLAGS);
         }

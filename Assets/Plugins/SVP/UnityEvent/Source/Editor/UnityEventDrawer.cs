@@ -6,7 +6,6 @@ using UnityEngine.UIElements;
 
 namespace SVP.Editor.Events
 {
-
     using static UnityEventDrawerUtilities;
     using static UnityEventUtilities;
 
@@ -110,7 +109,10 @@ namespace SVP.Editor.Events
 
         private void OverrideListView(ref ListView listView, SerializedProperty eventProperty)
         {
-            listView.makeItem = () => new UnityEventItem();
+            listView.makeItem = () =>
+            {
+                return CreateUnityEventItem();
+            };
 
             listView.bindItem = delegate (VisualElement element, int i)
             {
@@ -122,24 +124,101 @@ namespace SVP.Editor.Events
                 }
 
                 SerializedProperty listenerProperty = callsProperty.GetArrayElementAtIndex(i);
-                PropertyData propertyData = CreatePropertyDataForListener(listenerProperty);
+                object propertyData = CreatePropertyDataForListener(listenerProperty);
 
-                Func<GenericMenu> createMenuCallback = () => BuildPopupList(propertyData.ListenerTarget.objectReferenceValue, this.GetDummyEventFieldValue(), listenerProperty);
+                Func<GenericMenu> createMenuCallback = () => BuildPopupList(listenerProperty.FindPropertyRelative(TARGET_PROPERTY).objectReferenceValue, this.GetDummyEventFieldValue(), listenerProperty);
                 Func<string, string> formatSelectedValueCallback = (string value) => this.GetFunctionDropdownText(listenerProperty);
                 Func<SerializedProperty> getArgumentCallback = () => this.GetArgument(listenerProperty);
 
-                UnityEventItem unityEventItem = element as UnityEventItem;
-                unityEventItem.BindFields(propertyData, createMenuCallback, formatSelectedValueCallback, getArgumentCallback);
+                element.ItemBindFields(propertyData, createMenuCallback, formatSelectedValueCallback, getArgumentCallback);
             };
         }
 
-        #endregion
+        #endregion List
+
+        #region GUI
+
+        protected override void DrawEvent(Rect rect, int index, bool isActive, bool isFocused)
+        {
+            rect.y++;
+            
+            SerializedProperty listener = this.GetListenersArray().GetArrayElementAtIndex(index);
+            SerializedProperty target = listener.GetTargetProperty();
+            SerializedProperty methodName = listener.GetMethodNameProperty();
+            Rect[] rowRects = this.GetRowRects(rect);
+
+            Color originalBackgroundColour = GUI.backgroundColor;
+            GUI.backgroundColor = Color.white;
+
+            EditorGUI.PropertyField(rowRects[0], listener.GetCallStateProperty(), GUIContent.none);
+
+            EditorGUI.BeginChangeCheck();
+            GUI.Box(rowRects[1], GUIContent.none);
+            EditorGUI.PropertyField(rowRects[1], target, GUIContent.none);
+            if (EditorGUI.EndChangeCheck())
+            {
+                methodName.stringValue = null;
+            }
+
+            SerializedProperty argument = this.GetArgument(listener);
+            PersistentListenerMode listenerMode = GetMode(listener.GetModeProperty());
+            if (target.objectReferenceValue == null || string.IsNullOrEmpty(methodName.stringValue))
+            {
+                listenerMode = PersistentListenerMode.Void;
+            }
+
+            if (listenerMode == PersistentListenerMode.Object)
+            {
+                string objectArgumentTypeName = listener.GetArgumentsProperty().GetObjectArgumentProperty().stringValue;
+                Type objectArgumentType = typeof(UnityEngine.Object);
+                if (!string.IsNullOrEmpty(objectArgumentTypeName))
+                {
+                    objectArgumentType = Type.GetType(objectArgumentTypeName, false) ?? typeof(UnityEngine.Object);
+                }
+
+                EditorGUI.BeginChangeCheck();
+                UnityEngine.Object objectValue = EditorGUI.ObjectField(rowRects[3], GUIContent.none, argument.objectReferenceValue, objectArgumentType, true);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    argument.objectReferenceValue = objectValue;
+                }
+            }
+            else if (listenerMode != PersistentListenerMode.Void && listenerMode != 0)
+            {
+                EditorGUI.PropertyField(rowRects[3], argument, GUIContent.none);
+            }
+
+            using (new EditorGUI.DisabledScope(target.objectReferenceValue == null))
+            {
+                EditorGUI.BeginProperty(rowRects[2], GUIContent.none, methodName);
+                GUIContent dropdownContent;
+                if (EditorGUI.showMixedValue)
+                {
+                    dropdownContent = new GUIContent("-", "Mixed Values");
+                }
+                else
+                {
+                    string functionDropdownText = this.GetFunctionDropdownText(listener);
+                    dropdownContent = new GUIContent(functionDropdownText.ToString());
+                }
+
+                if (EditorGUI.DropdownButton(rowRects[2], dropdownContent, FocusType.Passive, EditorStyles.popup))
+                {
+                    BuildPopupList(target.objectReferenceValue, GetDummyEvent(listener), listener).DropDown(rowRects[2]);
+                }
+                EditorGUI.EndProperty();
+            }
+
+            GUI.backgroundColor = originalBackgroundColour;
+        }
+
+        #endregion GUI
 
         #region Popup List
 
         internal static GenericMenu BuildPopupList(UnityEngine.Object target, UnityEventBase dummyEvent, SerializedProperty listenerProperty)
         {
-            return null;
+            return new GenericMenu();
         }
 
         #endregion Popup List
