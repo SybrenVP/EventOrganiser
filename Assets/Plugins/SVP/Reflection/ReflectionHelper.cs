@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using UnityEditor;
 using UnityEngine;
 
 namespace SVP.Reflection
@@ -92,6 +93,16 @@ namespace SVP.Reflection
 
         #region Fields
 
+        public static T GetPublicFieldValue<T>(this Type type, object target, string name)
+        {
+            FieldInfo field = GetPublicField(type, name);
+            if (field == null)
+            {
+                return default(T);
+            }
+            return (T)field.GetValue(target);
+        }
+
         public static T GetPrivateFieldValue<T>(this Type type, object target, string name)
         {
             FieldInfo field = GetPrivateField(type, name);
@@ -110,6 +121,11 @@ namespace SVP.Reflection
                 return;
             }
             field.SetValue(target, value);
+        }
+
+        public static FieldInfo GetPublicField(this Type type, string name)
+        {
+            return GetField(type, name, INSTANCE_PUBLIC_FLAGS);
         }
 
         public static FieldInfo GetPrivateField(this Type type, string name)

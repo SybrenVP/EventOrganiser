@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Events;
@@ -290,7 +292,185 @@ namespace SVP.Editor.Events
 
         internal static void GeneratePopUpForType(GenericMenu menu, UnityEngine.Object target, string targetName, SerializedProperty listener, List<Type> delegateArgumentsTypes)
         {
+            List<System.Reflection.MethodInfo> eventMethods = EventAttributeHelper.GetAllEventAttributeMethodsForType(target.GetType());
 
+            HashSet<string> uniqueGroups = new HashSet<string>();
+            bool hasUngroupedEventMethods = false;
+            foreach (System.Reflection.MethodInfo eventMethod in eventMethods)
+            {
+                string eventMethodGroup = EventAttributeHelper.GetEventAttributeForMethod(eventMethod).Group;
+                if (!string.IsNullOrEmpty(eventMethodGroup))
+                {
+                    uniqueGroups.Add(eventMethodGroup);
+                }
+                else
+                {
+                    hasUngroupedEventMethods = true;
+                }
+            }
+
+            if (uniqueGroups.Count > 0)
+            {
+                menu.AddDisabledItem(new GUIContent(targetName + "/Groups"));
+            }
+
+            foreach (string group in uniqueGroups)
+            {
+                string groupTargetName = $"{targetName}/{group}";
+                GeneratePopUpForGroupOfType(menu, target, targetName, listener, delegateArgumentsTypes, group);
+            }
+
+            if (hasUngroupedEventMethods)
+            {
+                menu.AddItem(new GUIContent($"{targetName}/ "), false, null);
+                GeneratePopUpForGroupOfType(menu, target, targetName, listener, delegateArgumentsTypes, string.Empty);
+            }
+
+            if (EventAttributeHelper.HasMethodsWithoutEventAttribute(target.GetType()))
+            {
+                string otherGroupName = "Other";
+                if (uniqueGroups.Count == 0 && !hasUngroupedEventMethods)
+                {
+                    otherGroupName = string.Empty;
+                }
+
+                menu.AddItem(new GUIContent($"{targetName}/ "), false, null);
+                GeneratePopUpForNonEventOfType(menu, target, targetName, listener, delegateArgumentsTypes, otherGroupName);
+            }
+        }
+
+        private static void GeneratePopUpForGroupOfType(GenericMenu menu, UnityEngine.Object target, string targetName, SerializedProperty listener, List<Type> delegateArgumentsTypes, string group)
+        {
+            string groupText = !string.IsNullOrEmpty(group) ? $"/{group} " : "";
+
+            IList validMethodMapList = CreateValidMethodMapList();
+
+            if (delegateArgumentsTypes.Count != 0)
+            {
+                GetMethodsForTargetAndMode(target, delegateArgumentsTypes.ToArray(), validMethodMapList, PersistentListenerMode.EventDefined);
+                if (validMethodMapList.Count > 0)
+                {
+                    SanitizeListForEventGroup(validMethodMapList, group);
+
+                    SortEventMethodList(validMethodMapList);
+
+                    if (validMethodMapList.Count > 0)
+                    {
+                        string argumentTypeNames = string.Join(", ", delegateArgumentsTypes.Select((Type e) => GetTypeName(e)).ToArray());
+                        menu.AddDisabledItem(new GUIContent($"{targetName}{groupText}/Dynamic {argumentTypeNames}"));
+                        
+                        AddMethodsToMenuForGroup(menu, listener, validMethodMapList, targetName, group);
+                    }
+                }
+            }
+
+            validMethodMapList.Clear();
+            GetMethodsForTargetAndMode(target, new Type[1] {typeof(float)}, validMethodMapList, PersistentListenerMode.Float);
+            GetMethodsForTargetAndMode(target, new Type[1] {typeof(int)}, validMethodMapList, PersistentListenerMode.Int);
+            GetMethodsForTargetAndMode(target, new Type[1] {typeof(string)}, validMethodMapList, PersistentListenerMode.String);
+            GetMethodsForTargetAndMode(target, new Type[1] {typeof(bool)}, validMethodMapList, PersistentListenerMode.Bool);
+            GetMethodsForTargetAndMode(target, new Type[1] {typeof(UnityEngine.Object)}, validMethodMapList, PersistentListenerMode.Object);
+            GetMethodsForTargetAndMode(target, new Type[0], validMethodMapList, PersistentListenerMode.Void);
+
+            if (validMethodMapList.Count > 0)
+            {
+                SanitizeListForEventGroup(validMethodMapList, group);
+
+                SortEventMethodList(validMethodMapList);
+
+                if (validMethodMapList.Count > 0)
+                {
+                    if (delegateArgumentsTypes.Count != 0)
+                    {
+                        menu.AddDisabledItem(new GUIContent($"{targetName}{groupText}/Static Parameters"));
+                    }
+
+                    AddMethodsToMenuForGroup(menu, listener, validMethodMapList, targetName, group);
+                }
+            }
+        }
+
+        private static void GeneratePopUpForNonEventOfType(GenericMenu menu, UnityEngine.Object target, string targetName, SerializedProperty listener, List<Type> delegateArgumentsTypes, string group)
+        {
+            string groupText = !string.IsNullOrEmpty(group) ? $"/{group} " : "";
+
+            IList validMethodMapList = CreateValidMethodMapList();
+
+            if (delegateArgumentsTypes.Count != 0)
+            {
+                GetMethodsForTargetAndMode(target, delegateArgumentsTypes.ToArray(), validMethodMapList, PersistentListenerMode.EventDefined);
+                if (validMethodMapList.Count > 0)
+                {
+                    SanitizeListFromEventGroup(validMethodMapList);
+
+                    if (validMethodMapList.Count > 0)
+                    {
+                        string argumentTypeNames = string.Join(", ", delegateArgumentsTypes.Select((Type e) => GetTypeName(e)).ToArray());
+                        menu.AddDisabledItem(new GUIContent($"{targetName}{groupText}/Dynamic {argumentTypeNames}"));
+                        AddMethodsToMenu(menu, listener, validMethodMapList, $"{targetName}{groupText}");
+                    }
+                }
+            }
+
+            validMethodMapList.Clear();
+            GetMethodsForTargetAndMode(target, new Type[1] { typeof(float) }, validMethodMapList, PersistentListenerMode.Float);
+            GetMethodsForTargetAndMode(target, new Type[1] { typeof(int) }, validMethodMapList, PersistentListenerMode.Int);
+            GetMethodsForTargetAndMode(target, new Type[1] { typeof(string) }, validMethodMapList, PersistentListenerMode.String);
+            GetMethodsForTargetAndMode(target, new Type[1] { typeof(bool) }, validMethodMapList, PersistentListenerMode.Bool);
+            GetMethodsForTargetAndMode(target, new Type[1] { typeof(UnityEngine.Object) }, validMethodMapList, PersistentListenerMode.Object);
+            GetMethodsForTargetAndMode(target, new Type[0], validMethodMapList, PersistentListenerMode.Void);
+
+            if (validMethodMapList.Count > 0)
+            {
+                SanitizeListFromEventGroup(validMethodMapList);
+
+                if (validMethodMapList.Count > 0)
+                {
+                    if (delegateArgumentsTypes.Count != 0)
+                    {
+                        menu.AddDisabledItem(new GUIContent($"{targetName}{groupText}/Static Parameters"));
+                    }
+
+                    AddMethodsToMenu(menu, listener, validMethodMapList, $"{targetName}{groupText}");
+                }
+            }
+        }
+
+        private static bool AddMethodsToMenuForGroup(GenericMenu menu, SerializedProperty listener, IList methods, string targetName, string group)
+        {
+            List<object> methodMaps = new List<object>();
+            List<string> targetNames = new List<string>();
+
+            foreach (object validMethodMap in methods)
+            {
+                SVP.Events.EventAttribute eventAttribute = GetEventAttributeFromValidMethodMapMethodField(validMethodMap);
+                if (eventAttribute != null && group == eventAttribute.Group)
+                {
+                    string newTargetName = string.IsNullOrEmpty(group) ? targetName : $"{targetName}/{group}";
+                    targetNames.Add(newTargetName);
+                    methodMaps.Add(validMethodMap);
+                }
+            }
+
+            if (methodMaps.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0, count = methodMaps.Count; i < count; i++)
+            {
+                AddFunctionsForScript(menu, listener, methodMaps[i], targetNames[i]);
+            }
+
+            return true;
+        }
+
+        private static void AddMethodsToMenu(GenericMenu menu ,SerializedProperty listener, IList methods, string targetName)
+        {
+            for (int i = 0, count = methods.Count; i < count; i++)
+            {
+                AddFunctionsForScript(menu, listener, methods[i], targetName);
+            }
         }
 
         #endregion Popup List
