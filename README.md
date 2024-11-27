@@ -8,6 +8,7 @@ Event Organizer is a Unity tool designed to improve the Unity Event dropdown exp
 **Team Collaboration**: Allows team members to find your labeled methods more easily. 
 **Simple Integration**: Lightweight and easy to add to your Unity project.  
 ## Installation
+Unity version 2022.3.35f1 and higher.  
 
 ## Usage
 On any public method you can add an attribute `[SVP.Events.Event]`  
