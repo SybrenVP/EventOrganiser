@@ -9,6 +9,11 @@ namespace SVP.Events
         public string Group = string.Empty;
         public int Order = -1;
 
+        public EventAttribute()
+        {
+
+        }
+
         public EventAttribute(string group)
         {
             Group = group;
