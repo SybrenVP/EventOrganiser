@@ -8,6 +8,8 @@ namespace SVP.Editor.Events
     {
         private const string DEFAULT_PATH = "Assets/Plugins/SVP/UnityEventGraph/Data/UnityEventGraphWindowSettings.asset";
 
+        #region Styles
+
         [SerializeField] private VisualTreeAsset _unityEventWindowXml = null;
         public VisualTreeAsset UnityEventWindowXml
         {
@@ -19,6 +21,10 @@ namespace SVP.Editor.Events
         {
             get { return _unityEventWindowStyleSheet; }
         }
+
+        #endregion Styles
+
+        #region Get Create Settings
 
         internal static UnityEventGraphWindowSettings GetOrCreateSettings()
         {
@@ -56,5 +62,7 @@ namespace SVP.Editor.Events
             AssetDatabase.SaveAssets();
             return settings;
         }
+
+        #endregion Get Create Settings
     }
 }

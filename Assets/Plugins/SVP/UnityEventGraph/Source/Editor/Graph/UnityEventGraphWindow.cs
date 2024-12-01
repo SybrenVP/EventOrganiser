@@ -1,5 +1,7 @@
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 namespace SVP.Editor.Events
@@ -30,6 +32,19 @@ namespace SVP.Editor.Events
             root.styleSheets.Add(styleSheet);
             
             _eventGraphView = root.Q<UnityEventGraphView>();
+
+            PopulateEventGraphViewForScene(AssetDatabase.GUIDFromAssetPath(EditorSceneManager.GetActiveScene().path));
+        }
+
+        private void PopulateEventGraphViewForScene(GUID sceneGuid)
+        {
+            SceneEventGraphData sceneGraph = SceneEventGraphData.GetOrCreateSceneGraph(sceneGuid);
+            _eventGraphView.Populate(sceneGraph);
+
+            EditorApplication.delayCall += () =>
+            {
+                _eventGraphView.FrameAll();
+            };
         }
     }
 }

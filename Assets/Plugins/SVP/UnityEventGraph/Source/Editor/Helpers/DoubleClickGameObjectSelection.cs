@@ -1,14 +1,17 @@
 using UnityEngine.UIElements;
 
-public class DoubleClickGameObjectSelection : MouseManipulator
+namespace SVP.Editor.Events
 {
-    protected override void RegisterCallbacksOnTarget()
+    public class DoubleClickGameObjectSelection : MouseManipulator
     {
-        throw new System.NotImplementedException();
-    }
+        protected override void RegisterCallbacksOnTarget()
+        {
+            throw new System.NotImplementedException();
+        }
 
-    protected override void UnregisterCallbacksFromTarget()
-    {
-        throw new System.NotImplementedException();
+        protected override void UnregisterCallbacksFromTarget()
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

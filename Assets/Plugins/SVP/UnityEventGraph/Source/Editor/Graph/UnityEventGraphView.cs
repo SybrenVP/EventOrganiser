@@ -26,5 +26,10 @@ namespace SVP.Editor.Events
 
             // TODO: Undo.undoRedoPerformed += OnUndoRedo;
         }
+
+        public void Populate(SceneEventGraphData sceneGraphData)
+        {
+
+        }
     }
 }
