@@ -1,18 +1,14 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+using UnityEngine.UIElements;
 
-public class DoubleClickGameObjectSelection : MonoBehaviour
+public class DoubleClickGameObjectSelection : MouseManipulator
 {
-    // Start is called before the first frame update
-    void Start()
+    protected override void RegisterCallbacksOnTarget()
     {
-        
+        throw new System.NotImplementedException();
     }
 
-    // Update is called once per frame
-    void Update()
+    protected override void UnregisterCallbacksFromTarget()
     {
-        
+        throw new System.NotImplementedException();
     }
 }

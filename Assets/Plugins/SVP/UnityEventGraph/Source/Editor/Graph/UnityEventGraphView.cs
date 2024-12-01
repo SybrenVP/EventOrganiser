@@ -1,18 +1,30 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+using UnityEditor.Experimental.GraphView;
+using UnityEngine.UIElements;
 
-public class UnityEventGraphView : MonoBehaviour
+namespace SVP.Editor.Events
 {
-    // Start is called before the first frame update
-    void Start()
+    public class UnityEventGraphView : GraphView
     {
-        
-    }
+        private UnityEventGraphWindowSettings _settings = null;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        public new class UxmlFactory : UxmlFactory<UnityEventGraphView, GraphView.UxmlTraits> { }
+
+        public UnityEventGraphView()
+        {
+            _settings = UnityEventGraphWindowSettings.GetOrCreateSettings();
+
+            Insert(0, new GridBackground());
+
+            this.AddManipulator(new ContentZoomer());
+            this.AddManipulator(new ContentDragger());
+            this.AddManipulator(new DoubleClickGameObjectSelection());
+            this.AddManipulator(new SelectionDragger());
+            this.AddManipulator(new RectangleSelector());
+
+            StyleSheet styleSheet = _settings.UnityEventWindowStyleSheet;
+            styleSheets.Add(styleSheet);
+
+            // TODO: Undo.undoRedoPerformed += OnUndoRedo;
+        }
     }
 }
